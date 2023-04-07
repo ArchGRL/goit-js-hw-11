@@ -15,19 +15,29 @@ const lightbox = new SimpleLightbox('.gallery a', {
   captionDelay: 250,
 });
 
+function smoothPageScroll() {
+  const { height: cardHeight } = galleryEl.firstElementChild.getBoundingClientRect();
+
+window.scrollBy({
+  top: cardHeight * 2,
+  behavior: "smooth",
+});
+}
+
 const handleSearchPhotos = async event => {
   event.preventDefault();
 
   pixabayAPI.page = 1;
 
+  galleryEl.innerHTML = "";
   const searchQuery = event.target.elements['searchQuery'].value.trim();
+  pixabayAPI.q = searchQuery;
+  loadMoreBtnEl.classList.add('is-hidden');
  
   if (!searchQuery) {
     Notify.warning('Please enter a search query.');
     return;
   }
-
-  pixabayAPI.q = searchQuery;
 
   try {
     const data = await pixabayAPI.fetchPhotos();
@@ -40,24 +50,17 @@ const handleSearchPhotos = async event => {
       galleryEl.innerHTML = createGalleryCards(data.hits);
       Notify.success(`Hooray! We found ${data.totalHits} images.`);
   
-      const totalPage = Math.ceil(data.totalHits / pixabayAPI.perPage);
-      if (pixabayAPI.page === totalPage) {
+      if (data.totalHits <= pixabayAPI.perPage) {
         return;
       }
       loadMoreBtnEl.classList.remove('is-hidden');
      
       lightbox.refresh(); 
+      smoothPageScroll();
     } catch (error) {
     console.log(error);
       loadMoreBtnEl.classList.add('is-hidden');
-    };
-
-    const { height: cardHeight } = galleryEl.firstElementChild.getBoundingClientRect();
-
-    window.scrollBy({
-      top: cardHeight * 2,
-      behavior: "smooth",
-    });
+    }; 
 };
 
 const handleLoadMoreBtnClick = async () => {
@@ -66,32 +69,18 @@ const handleLoadMoreBtnClick = async () => {
   try {
     const  data  = await pixabayAPI.fetchPhotos();
     const totalPage = Math.ceil(data.totalHits / pixabayAPI.perPage);
+    galleryEl.insertAdjacentHTML('beforeend', createGalleryCards(data.hits));
     if (pixabayAPI.page === totalPage) {
       loadMoreBtnEl.classList.add('is-hidden');
       Notify.info("We're sorry, but you've reached the end of search results.");
     }
-    galleryEl.insertAdjacentHTML('beforeend', createGalleryCards(data.hits));
-  
+      
     lightbox.refresh();
+    smoothPageScroll();
   } catch (error) {
     console.log(error);
-    loadMoreBtnEl.classList.add('is-hidden');
   };
-  
-  const { height: cardHeight } = galleryEl.firstElementChild.getBoundingClientRect();
-
-  window.scrollBy({
-    top: cardHeight * 2,
-    behavior: "smooth",
-  });
 };
     
-
 formEl.addEventListener('submit', handleSearchPhotos);
-
 loadMoreBtnEl.addEventListener('click', handleLoadMoreBtnClick);
-
-
-
-
-
